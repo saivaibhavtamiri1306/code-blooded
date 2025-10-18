@@ -9,12 +9,12 @@ let mouseX = 0, mouseY = 0;
 let audioPlayer = null; // To manage the currently playing audio
 
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-  apiKey: "AIzaSyCbPOQM8vN7pou3lupqEd-1MfTFGnA61UM",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCJYyqeCGlsUreOFyR4LXrlZDKublc15Ik",
+  authDomain: "arogya-copilot.firebaseapp.com",
+  projectId: "arogya-copilot",
+  storageBucket: "arogya-copilot.firebasestorage.app",
+  messagingSenderId: "743739908215",
+  appId: "1:743739908215:web:08aa603e2627d0f0dd2672"
 };
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -1944,4 +1944,5 @@ const setupModuleEventListeners = (module) => {
             }
 
         }
+
 
