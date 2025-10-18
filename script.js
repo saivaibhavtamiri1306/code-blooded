@@ -9,7 +9,7 @@ let mouseX = 0, mouseY = 0;
 let audioPlayer = null; // To manage the currently playing audio
 
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyCbPOQM8vN7pou3lupqEd-1MfTFGnA61UM",
   authDomain: "YOUR_AUTH_DOMAIN",
   projectId: "YOUR_PROJECT_ID",
   storageBucket: "YOUR_STORAGE_BUCKET",
@@ -1944,3 +1944,4 @@ const setupModuleEventListeners = (module) => {
             }
 
         }
+
