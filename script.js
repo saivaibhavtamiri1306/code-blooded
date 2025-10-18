@@ -113,7 +113,7 @@ const speak = async (text, btn) => {
         return;
     }
 
-    const apiKey = "YOUR_GOOGLE_AI_API_KEY";
+    const apiKey = "AIzaSyCbPOQM8vN7pou3lupqEd-1MfTFGnA61UM";
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
     const payload = {
         contents: [{ parts: [{ text }] }],
@@ -1503,7 +1503,7 @@ const setupModuleEventListeners = (module) => {
         const callGeminiAPI = async (systemPrompt, textInput, resultDisplay, type) => {
             resultDisplay.innerHTML = `<div class="loader"></div><p class="mt-4">${getTranslation('analysis_loading')}</p>`;
             
-            const apiKey = "YOUR_GOOGLE_AI_API_KEY";
+            const apiKey = "AIzaSyCbPOQM8vN7pou3lupqEd-1MfTFGnA61UM";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             
             let parts = [];
@@ -1836,7 +1836,7 @@ const setupModuleEventListeners = (module) => {
 
         // Simplified Gemini call for chat
         const callGeminiAPIChat = async (systemPrompt, textInput) => {
-            const apiKey = "YOUR_GOOGLE_AI_API_KEY";;
+            const apiKey = "AIzaSyCbPOQM8vN7pou3lupqEd-1MfTFGnA61UM";;
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             const payload = {
                 contents: [{ parts: [{ text: textInput }] }],
@@ -1879,7 +1879,7 @@ const setupModuleEventListeners = (module) => {
             
             try {
                 // Fetch First Aid Steps
-                const apiKey = "YOUR_GOOGLE_AI_API_KEY";; 
+                const apiKey = "AIzaSyCbPOQM8vN7pou3lupqEd-1MfTFGnA61UM";; 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
                 const prompt = `Provide a numbered list of the 5 most critical first aid steps for a generic traffic accident scenario in ${district}, ${state}, India. The steps should be concise and easy to understand for a layperson. Focus on the DRSABCD action plan (Danger, Response, Send for help, Airway, Breathing, CPR, Defibrillation), but simplify it. The response must be a JSON object with a key 'steps', and the value should be an array of strings, where each string is one step. For 'Send for help', include Indian emergency numbers like 102/108. The user's preferred language is ${state.selectedLanguage}. Provide the steps in that language.`;
 
@@ -1942,4 +1942,5 @@ const setupModuleEventListeners = (module) => {
                 firstAidStepsContainer.innerHTML = `<p class="text-red-400">Could not load first aid advice.</p>`;
                 nearbyHospitalsContainer.innerHTML = `<p class="text-red-400">Could not find nearby hospitals.</p>`;
             }
+
         }
