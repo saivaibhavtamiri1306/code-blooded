@@ -1045,9 +1045,6 @@ const renderModule = (module) => {
     mainModuleContent.appendChild(moduleContainer);
 
     // Add event listeners and specific logic after rendering
-    setupModuleEventListeners(module);
-};
-
 const setupModuleEventListeners = (module) => {
     const submitButton = getEl(`submit-${module.id}`);
     const resultDiv = getEl(`result-${module.id}`);
@@ -1058,184 +1055,439 @@ const setupModuleEventListeners = (module) => {
             let userInput = '';
             let analysisType = 'text'; // default
 
-            switch(module.id) {
-                case 'arogyasos': {
-                    const selectedState = getEl('gov-state').value;
-                    const selectedDistrict = getEl('gov-district').value;
-                    if (!selectedState || !selectedDistrict || selectedDistrict === 'Select District') {
-                        resultDiv.innerHTML = `<p class="text-red-400">Please select your state and district.</p>`;
-                        return;
+            // --- Start of Corrected Section ---
+            try { // Add a try...catch block for overall safety
+                switch(module.id) {
+                    case 'arogyasos': {
+                        const stateSelectEl = getEl('gov-state');
+                        const districtSelectEl = getEl('gov-district');
+                        // Safety Check: Ensure elements exist before accessing value
+                        if (!stateSelectEl || !districtSelectEl) {
+                             console.error("SOS module state/district dropdowns not found.");
+                             resultDiv.innerHTML = `<p class="text-red-400">UI Error: Location selectors missing.</p>`;
+                             return;
+                        }
+                        const selectedState = stateSelectEl.value;
+                        const selectedDistrict = districtSelectEl.value;
+                        if (!selectedState || !selectedDistrict || selectedDistrict === 'Select District') {
+                            resultDiv.innerHTML = `<p class="text-red-400">Please select your state and district.</p>`;
+                            return;
+                        }
+                        loadEmergencyData(selectedState, selectedDistrict, resultDiv);
+                        return; // Prevent fall-through to callGeminiAPI
                     }
-                    loadEmergencyData(selectedState, selectedDistrict, resultDiv);
-                    return; // Prevent fall-through to callGeminiAPI
-                }
-                case 'future': {
-                    const age = getEl('future-age').value;
-                    const gender = getEl('future-gender').value;
-                    const smoking = getEl('future-smoking').value;
-                    const exercise = getEl('future-exercise').value;
-                    const notes = getEl('notes-input').value;
-                    userInput = `Age: ${age}, Gender: ${gender}, Smoking: ${smoking}, Exercise: ${exercise}. Notes: ${notes}`;
-                    systemPrompt += ' Analyze the provided health data to forecast potential future health risks and offer preventive advice.';
-                    analysisType = 'text';
-                    break;
-                }
+                    case 'future': {
+                        const ageEl = getEl('future-age');
+                        const genderEl = getEl('future-gender');
+                        const smokingEl = getEl('future-smoking');
+                        const exerciseEl = getEl('future-exercise');
+                        const notesEl = getEl('notes-input');
 
-                case 'wellness': {
-                    const goal = getEl('wellness-goal').value;
-                    const diet = getEl('wellness-diet').value;
-                    const conditions = getEl('wellness-conditions').value;
-                    const wellnessNotes = getEl('notes-input').value;
-                    userInput = `Goal: ${goal}, Diet: ${diet}, Conditions: ${conditions}. Notes: ${wellnessNotes}`;
-                    systemPrompt += ' Create a personalized wellness plan including diet, exercise, and lifestyle suggestions based on the user\'s goals and conditions.';
-                    analysisType = 'text';
-                    break;
-                }
-                
-                case 'medsentry': {
-                    const goal = getEl('medsentry-goal').value;
-                    const medications = getEl('text-input').value;
-                    if (!medications) {
-                        resultDiv.innerHTML = `<p class="text-red-400">Please list at least one medication.</p>`;
-                        return;
+                        // Safety Check: Ensure elements exist before accessing value
+                        if (!ageEl || !genderEl || !smokingEl || !exerciseEl || !notesEl) {
+                             console.error("One or more UI elements for 'future' module are missing.");
+                             resultDiv.innerHTML = `<p class="text-red-400">A critical UI error occurred. Please refresh the page and try again.</p>`;
+                             return;
+                        }
+                        const age = ageEl.value;
+                        const gender = genderEl.value;
+                        const smoking = smokingEl.value;
+                        const exercise = exerciseEl.value;
+                        const notes = notesEl.value;
+                        userInput = `Age: ${age}, Gender: ${gender}, Smoking: ${smoking}, Exercise: ${exercise} hours/week. Notes: ${notes || 'None'}`;
+                        systemPrompt += ' Analyze the provided health data to forecast potential future health risks and offer preventive advice.';
+                        analysisType = 'text';
+                        break;
                     }
-                    userInput = `Goal: "${goal}". Medications listed: ${medications}`;
-                    systemPrompt += ` You are Med-Sentry AI, a drug interaction and information checker. Based on the user's goal and the list of medications, provide a clear and concise analysis. For interactions, clearly state potential risks. For side effects, list the most common ones. For alternatives, suggest generic names if available. For explanations, describe the drug's purpose in simple terms. ALWAYS include a disclaimer that this is not medical advice and the user must consult a doctor or pharmacist before making any changes to their medication.`;
-                    analysisType = 'text';
-                    break;
-                }
 
-                case 'healthtrend': {
-                    if (state.uploadedFiles.length === 0) {
-                        resultDiv.innerHTML = `<p class="text-red-400">${getTranslation('upload_first')}</p>`;
-                        return;
+                    case 'wellness': {
+                        const goalEl = getEl('wellness-goal');
+                        const dietEl = getEl('wellness-diet');
+                        const conditionsEl = getEl('wellness-conditions');
+                        const notesEl = getEl('notes-input');
+
+                        // Safety Check: Ensure elements exist before accessing value
+                         if (!goalEl || !dietEl || !conditionsEl || !notesEl) {
+                             console.error("One or more UI elements for 'wellness' module are missing.");
+                             resultDiv.innerHTML = `<p class="text-red-400">A critical UI error occurred. Please refresh the page and try again.</p>`;
+                             return;
+                        }
+                        const goal = goalEl.value;
+                        const diet = dietEl.value;
+                        const conditions = conditionsEl.value;
+                        const wellnessNotes = notesEl.value;
+                        userInput = `Primary Goal: ${goal}, Current Diet: ${diet}, Existing Conditions: ${conditions}. Additional Notes: ${wellnessNotes || 'None'}`;
+                        systemPrompt += ' Create a personalized wellness plan including diet, exercise, and lifestyle suggestions based on the user\'s goals and conditions.';
+                        analysisType = 'text';
+                        break;
                     }
-                    const reportType = getEl('healthtrend-type').value;
-                    const goal = getEl('healthtrend-goal').value;
-                    const notes = getEl('notes-input').value;
-                    userInput = `Report Type: ${reportType}. Primary Goal: ${goal}. Specific questions: ${notes || 'None'}`;
-                    systemPrompt += ` You are Health-Trend AI, a medical report analyzer. Based on the user's uploaded medical report image(s) AND their specified report type, goal, and questions, provide a detailed analysis. Your goal is to simplify and interpret complex medical documents for a layperson. If the goal is a summary, provide one. If it's to explain terms, do so. If it's to highlight abnormal values, find them and explain their significance in simple terms. If generating questions for a doctor, make them clear and relevant. You MUST state clearly that this is not a medical diagnosis and the user should consult their doctor for any medical advice.`;
-                    analysisType = 'image';
-                    break;
-                }
 
-                case 'ayur':
-                    if (state.uploadedFiles.length === 0) {
-                        resultDiv.innerHTML = `<p class="text-red-400">${getTranslation('upload_first')}</p>`;
-                        return;
+                    case 'medsentry': {
+                         const goalEl = getEl('medsentry-goal');
+                         const medicationsEl = getEl('text-input');
+
+                         // Safety Check: Ensure elements exist before accessing value
+                         if (!goalEl || !medicationsEl) {
+                             console.error("One or more UI elements for 'medsentry' module are missing.");
+                             resultDiv.innerHTML = `<p class="text-red-400">A critical UI error occurred. Please refresh the page and try again.</p>`;
+                             return;
+                         }
+                        const goal = goalEl.value;
+                        const medications = medicationsEl.value;
+                        if (!medications) {
+                            resultDiv.innerHTML = `<p class="text-red-400">Please list at least one medication.</p>`;
+                            return;
+                        }
+                        userInput = `Goal: "${goal}". Medications listed:\n${medications}`;
+                        systemPrompt += ` You are Med-Sentry AI, a drug interaction and information checker. Based on the user's goal and the list of medications, provide a clear and concise analysis. For interactions, clearly state potential risks. For side effects, list the most common ones. For alternatives, suggest generic names if available. For explanations, describe the drug's purpose in simple terms. ALWAYS include a disclaimer that this is not medical advice and the user must consult a doctor or pharmacist before making any changes to their medication.`;
+                        analysisType = 'text';
+                        break;
                     }
-                    userInput = getEl('notes-input').value || `Analyze the provided image(s).`;
-                    systemPrompt += ` Analyze the uploaded image(s) and the user's notes. For 'ayur', identify the medicinal plant. Provide a detailed explanation.`;
-                    analysisType = 'image';
-                    break;
-                
-                case 'derma': {
-                    if (state.uploadedFiles.length === 0) {
-                        resultDiv.innerHTML = `<p class="text-red-400">Please upload a photo of the skin area for analysis.</p>`;
-                        return;
+
+                    case 'healthtrend': {
+                        const reportTypeEl = getEl('healthtrend-type');
+                        const goalEl = getEl('healthtrend-goal');
+                        const notesEl = getEl('notes-input');
+
+                        // Safety Check: Ensure elements exist before accessing value
+                         if (!reportTypeEl || !goalEl || !notesEl) {
+                             console.error("One or more UI elements for 'healthtrend' module are missing.");
+                             resultDiv.innerHTML = `<p class="text-red-400">A critical UI error occurred. Please refresh the page and try again.</p>`;
+                             return;
+                         }
+                        if (state.uploadedFiles.length === 0) {
+                            resultDiv.innerHTML = `<p class="text-red-400">${getTranslation('upload_first')}</p>`;
+                            return;
+                        }
+                        const reportType = reportTypeEl.value;
+                        const goal = goalEl.value;
+                        const notes = notesEl.value;
+                        userInput = `Report Type: ${reportType}. Primary Goal: "${goal}". Specific questions/focus: ${notes || 'None'}`;
+                        systemPrompt += ` You are Health-Trend AI, a medical report analyzer. Based on the user's uploaded medical report image(s) AND their specified report type, goal, and questions, provide a detailed analysis. Your goal is to simplify and interpret complex medical documents for a layperson. If the goal is a summary, provide one. If it's to explain terms, do so. If it's to highlight abnormal values, find them and explain their significance in simple terms. If generating questions for a doctor, make them clear and relevant. You MUST state clearly that this is not a medical diagnosis and the user should consult their doctor for any medical advice.`;
+                        analysisType = 'image';
+                        break;
                     }
-                    const concern = getEl('derma-concern').value;
-                    const goal = getEl('derma-goal').value;
-                    const notes = getEl('notes-input').value;
-                    userInput = `Primary Concern: ${concern}, Primary Goal: ${goal}. Detailed description: ${notes}`;
-                    systemPrompt += `You are Dermalens, an AI skin health analyzer. Based on the user's uploaded photo AND their described concern, goal, and detailed symptoms, provide a preliminary analysis. Identify potential conditions, suggest possible next steps (e.g., moisturizing, avoiding irritants), and provide skincare advice. You MUST state clearly that this is not a medical diagnosis and the user should consult a dermatologist for any persistent or worrying conditions.`;
-                    analysisType = 'image';
-                    break;
-                }
-                
-                case 'mindwell': {
-                    const concern = getEl('mindwell-concern').value;
-                    const goal = getEl('mindwell-goal').value;
-                    const notes = getEl('notes-input').value;
-                    userInput = `Primary Concern: ${concern}, Primary Goal: ${goal}. Detailed description: ${notes}`;
-                    systemPrompt += `You are MindWell, an empathetic AI mental health companion. Based on the user's primary concern, goal, and detailed description, provide a supportive and understanding response. Listen carefully to their feelings, validate their experience, and offer gentle, constructive perspectives or mindfulness techniques relevant to their situation. Your role is to be a safe, non-judgmental space. You are not a therapist and must not provide medical advice or diagnosis. If the user expresses thoughts of self-harm or is in a crisis, you must gently and immediately guide them to seek professional help by providing emergency contact numbers (e.g., a relevant crisis hotline for India like AASRA: +91-9820466726) and encouraging them to speak with a qualified professional. The user's preferred language is ${state.selectedLanguage}.`;
-                    analysisType = 'text';
-                    break;
-                }
 
-                case 'govschemes': {
-                    const state = getEl('gov-state').value;
-                    const district = getEl('gov-district').value;
-                    const beneficiary = getEl('gov-beneficiary').value;
-                    const concern = getEl('notes-input').value;
-                    userInput = `Find government health schemes for State: ${state}, District: ${district}. I am looking for schemes for a '${beneficiary}'. My specific concern is: '${concern || 'General health needs'}'.`;
-                    systemPrompt += ' You are an expert on Indian government health schemes. Find and list relevant central and state-level government health schemes based on the user\'s location, beneficiary type, and health concern. For each scheme, provide a clear summary, key benefits, eligibility criteria, and simple instructions on how to apply. Format the response for easy readability.';
-                    analysisType = 'text';
-                    break;
-                }
+                    case 'ayur':
+                    case 'derma':
+                    case 'gait': { // Group similar image upload modules
+                         const notesEl = getEl('notes-input');
+                         let notesValue = '';
+                         // Safety Check: Ensure notes element exists before accessing value
+                         if (notesEl) {
+                             notesValue = notesEl.value;
+                         } else {
+                              console.warn(`Optional 'notes-input' not found for module '${module.id}'`);
+                         }
 
-                case 'hospitalconnect': {
-                    const service = getEl('hospital-service').value;
-                    const hospitalState = getEl('gov-state').value;
-                    const hospitalDistrict = getEl('gov-district').value;
-                    const hospitalName = getEl('hospital-select').value;
-                    const patientName = getEl('patient-name').value;
-                    const contactNumber = getEl('contact-number').value;
-                    const appointmentDate = getEl('appointment-date').value;
-                    const appointmentTime = getEl('appointment-time').value;
-                    const emergencyLocation = getEl('emergency-location').value;
-                    const hospitalNotes = getEl('notes-input').value;
+                         if (state.uploadedFiles.length === 0) {
+                            resultDiv.innerHTML = `<p class="text-red-400">${getTranslation('upload_first')}</p>`; // Assumes image upload
+                            return;
+                         }
+                         userInput = notesValue || `Analyze the provided image(s).`; // Use notes or default prompt
 
-                    userInput = `Service Request: ${service}. Location: ${hospitalDistrict}, ${hospitalState}. Hospital: ${hospitalName}. Patient Name: ${patientName}. Contact Number: ${contactNumber}. Preferred Date: ${appointmentDate}. Preferred Time: ${appointmentTime}. Emergency Location: ${emergencyLocation}. Notes: ${hospitalNotes}`;
-                    systemPrompt = `You are an automated hospital booking assistant named Arogya. The user's preferred language is ${state.selectedLanguage}. Based on the user's request, generate a clear, professional confirmation message. State that their request has been successfully submitted to the specified hospital. Reiterate all the relevant details provided by the user (Service, Patient Name, Hospital, Date, Time, etc.) in the confirmation. For ambulance requests, state that the hospital has been notified and will dispatch an ambulance to the provided location. For bed availability or general inquiries, state that the hospital will contact them shortly on their provided number. Do not use markdown.`;
-                    analysisType = 'text'; // It's a text generation task now
-                    break;
-                }
-                
-                case 'digitaltwin': {
-                    const hr = getEl('twin-hr').value;
-                    const bp = getEl('twin-bp').value;
-                    const exercise = getEl('twin-exercise').value;
-                    const sleep = getEl('twin-sleep').value;
-                    const scenario = getEl('notes-input').value;
-                    userInput = `Current Health Profile: Resting Heart Rate=${hr}bpm, Blood Pressure=${bp}, Weekly Exercise=${exercise}hrs, Daily Sleep=${sleep}hrs. Simulated Scenario: ${scenario}`;
-                    systemPrompt += `You are a health simulation AI. Based on the user's health profile, analyze the likely long-term (1-5 year) impact of the simulated lifestyle change. Discuss potential improvements in metrics, reduction in chronic disease risk (like diabetes, hypertension), and overall well-being. Provide a balanced, evidence-based forecast.`;
-                     analysisType = 'text';
-                    break;
-                }
-                
-                case 'outbreak': {
-                    const outbreakState = getEl('gov-state').value;
-                    const outbreakDistrict = getEl('gov-district').value;
-                    const symptoms = getEl('notes-input').value;
-                    userInput = `Location for Analysis: ${outbreakDistrict}, ${outbreakState}. Key symptoms observed in the community: ${symptoms}.`;
-                    systemPrompt += `You are an epidemiologist AI. Based on the location and reported symptoms, provide a risk assessment for a potential infectious disease outbreak. Consider seasonality, population density (inferred from location), and symptom patterns. Suggest common potential pathogens and recommend public health and safety measures (e.g., hygiene, masking, seeking medical advice). Provide a risk level (Low, Moderate, High, Very High) with justification.`;
-                     analysisType = 'text';
-                    break;
-                }
+                         // Add specific prompts based on module
+                         if(module.id === 'ayur') {
+                            systemPrompt += ` Analyze the uploaded image(s) to identify the medicinal plant. Provide details about its traditional Ayurvedic uses, properties, and preparation methods if applicable. Consider the user's notes: ${notesValue || 'None'}`;
+                         } else if (module.id === 'derma') {
+                             const concernEl = getEl('derma-concern');
+                             const goalEl = getEl('derma-goal');
+                             // Safety Check: Ensure elements exist
+                              if (!concernEl || !goalEl) {
+                                  console.error("Missing concern/goal dropdowns for 'derma' module.");
+                                  resultDiv.innerHTML = `<p class="text-red-400">A critical UI error occurred. Please refresh.</p>`;
+                                  return;
+                              }
+                             userInput = `Primary Concern: ${concernEl.value}, Primary Goal: ${goalEl.value}. Detailed description: ${notesValue}`;
+                             systemPrompt += `You are Dermalens, an AI skin health analyzer. Based on the user's uploaded photo AND their described concern, goal, and detailed symptoms, provide a preliminary analysis. Identify potential conditions, suggest possible next steps (e.g., moisturizing, avoiding irritants), and provide skincare advice. You MUST state clearly that this is not a medical diagnosis and the user should consult a dermatologist for any persistent or worrying conditions.`;
+                         } else if (module.id === 'gait') {
+                             const areaEl = getEl('gait-area');
+                             const goalEl = getEl('gait-goal');
+                             // Safety Check: Ensure elements exist
+                              if (!areaEl || !goalEl) {
+                                  console.error("Missing area/goal dropdowns for 'gait' module.");
+                                  resultDiv.innerHTML = `<p class="text-red-400">A critical UI error occurred. Please refresh.</p>`;
+                                  return;
+                              }
+                             userInput = `Area of Concern: ${areaEl.value}, Primary Goal: ${goalEl.value}. Detailed description: ${notesValue}`;
+                             systemPrompt += `You are Gait-Guard AI. Analyze the uploaded posture photo and the user's description (${userInput}) to identify potential musculoskeletal issues or postural deviations. Suggest potential causes and recommend general corrective exercises or ergonomic advice. State clearly this is not a substitute for professional medical or physiotherapy assessment.`;
+                         }
+                         analysisType = 'image';
+                         break;
+                    }
 
-                case 'visionfit': {
-                    const area = getEl('visionfit-area').value;
-                    const goal = getEl('visionfit-goal').value;
-                    const notes = getEl('notes-input').value;
-                    userInput = `Area of Concern: ${area}, Primary Goal: ${goal}. Detailed description: ${notes}`;
-                    systemPrompt += `You are Vision-Fit, an AI-powered physiotherapist. Based on the user's area of concern, goal, and detailed description, create a safe, personalized exercise and stretching plan. Provide clear instructions for each exercise, including reps, sets, and frequency. Include important warnings or precautions. Structure the response with clear headings for different sections of the plan.`;
-                    analysisType = 'text';
-                    break;
-                }
+                    // --- Corrected Sonus/VocalTone ---
+                    case 'sonus':
+                    case 'vocaltone': {
+                        const notesInputEl = getEl('notes-input');
+                        let notesValue = '';
+                         // Safety Check: Ensure notes element exists before accessing value
+                        if (notesInputEl) {
+                            notesValue = notesInputEl.value;
+                        } else {
+                            console.warn(`Optional 'notes-input' not found for module '${module.id}'`);
+                        }
 
-                default:
-                    userInput = getEl('text-input').value;
-                    break;
+                        if (state.uploadedFiles.length === 0) {
+                            resultDiv.innerHTML = `<p class="text-red-400">${getTranslation('upload_audio_first')}</p>`;
+                            return; // Stop if no file
+                        }
+
+                        userInput = notesValue || `Analyze the uploaded audio file.`; // Use notes or a default prompt
+                        if (module.id === 'sonus') {
+                             systemPrompt += ` You are Sonus AI. Analyze the uploaded audio file (likely cough or breathing sounds) for acoustic characteristics potentially indicative of respiratory conditions. Consider the user's notes: ${notesValue || 'None'}. Provide a preliminary analysis, but emphasize this is not a diagnosis and a doctor should be consulted.`;
+                        } else { // vocaltone
+                             systemPrompt += ` You are Vocal-Tone AI. Analyze the uploaded voice recording for vocal biomarkers (like pitch, jitter, shimmer) that could subtly indicate underlying health issues. Consider the user's notes: ${notesValue || 'None'}. Explain findings in simple terms and state this is an experimental analysis, not a medical diagnosis.`;
+                        }
+                        analysisType = 'audio'; // Set the correct analysis type
+                        break;
+                    }
+                    // --- End Corrected Sonus/VocalTone ---
+
+                    case 'mindwell': {
+                        const concernEl = getEl('mindwell-concern');
+                        const goalEl = getEl('mindwell-goal');
+                        const notesEl = getEl('notes-input');
+                        // Safety Check: Ensure elements exist
+                         if (!concernEl || !goalEl || !notesEl) {
+                            console.error("One or more UI elements for 'mindwell' module are missing.");
+                            resultDiv.innerHTML = `<p class="text-red-400">A critical UI error occurred. Please refresh.</p>`;
+                            return;
+                         }
+                        const concern = concernEl.value;
+                        const goal = goalEl.value;
+                        const notes = notesEl.value;
+                        userInput = `Primary Concern: ${concern}, Primary Goal: ${goal}. Detailed description: ${notes}`;
+                        systemPrompt += `You are MindWell, an empathetic AI mental health companion. Based on the user's primary concern, goal, and detailed description, provide a supportive and understanding response. Listen carefully to their feelings, validate their experience, and offer gentle, constructive perspectives or mindfulness techniques relevant to their situation. Your role is to be a safe, non-judgmental space. You are not a therapist and must not provide medical advice or diagnosis. If the user expresses thoughts of self-harm or is in a crisis, you must gently and immediately guide them to seek professional help by providing emergency contact numbers (e.g., a relevant crisis hotline for India like AASRA: +91-9820466726) and encouraging them to speak with a qualified professional. The user's preferred language is ${state.selectedLanguage}.`;
+                        analysisType = 'text';
+                        break;
+                    }
+
+                    case 'govschemes': {
+                        const stateEl = getEl('gov-state');
+                        const districtEl = getEl('gov-district');
+                        const beneficiaryEl = getEl('gov-beneficiary');
+                        const concernEl = getEl('notes-input'); // Note: shared ID
+                        // Safety Check: Ensure elements exist
+                         if (!stateEl || !districtEl || !beneficiaryEl || !concernEl) {
+                            console.error("One or more UI elements for 'govschemes' module are missing.");
+                            resultDiv.innerHTML = `<p class="text-red-400">A critical UI error occurred. Please refresh.</p>`;
+                            return;
+                         }
+                        const selectedState = stateEl.value;
+                        const selectedDistrict = districtEl.value;
+                        const beneficiary = beneficiaryEl.value;
+                        const concern = concernEl.value;
+                         if (!selectedState || !selectedDistrict || selectedDistrict === 'Select District') {
+                            resultDiv.innerHTML = `<p class="text-red-400">Please select your state and district.</p>`;
+                            return;
+                         }
+                        userInput = `Find government health schemes for State: ${selectedState}, District: ${selectedDistrict}. I am looking for schemes for a '${beneficiary}'. My specific concern is: '${concern || 'General health needs'}'.`;
+                        systemPrompt += ' You are an expert on Indian government health schemes. Find and list relevant central and state-level government health schemes based on the user\'s location, beneficiary type, and health concern. For each scheme, provide a clear summary, key benefits, eligibility criteria, and simple instructions on how to apply. Format the response for easy readability.';
+                        analysisType = 'text';
+                        break;
+                    }
+
+                    case 'hospitalconnect': {
+                        const serviceEl = getEl('hospital-service');
+                        const stateEl = getEl('gov-state');
+                        const districtEl = getEl('gov-district');
+                        const hospitalEl = getEl('hospital-select');
+                        const patientNameEl = getEl('patient-name');
+                        const contactNumberEl = getEl('contact-number');
+                        const dateEl = getEl('appointment-date');
+                        const timeEl = getEl('appointment-time');
+                        const locationEl = getEl('emergency-location');
+                        const notesEl = getEl('notes-input');
+
+                        // Safety Check: Ensure all potentially needed elements exist
+                         if (!serviceEl || !stateEl || !districtEl || !hospitalEl || !patientNameEl || !contactNumberEl || !dateEl || !timeEl || !locationEl || !notesEl) {
+                             console.error("One or more UI elements for 'hospitalconnect' module are missing.");
+                             resultDiv.innerHTML = `<p class="text-red-400">A critical UI error occurred. Please refresh the page and try again.</p>`;
+                             return;
+                         }
+
+                        const service = serviceEl.value;
+                        const hospitalState = stateEl.value;
+                        const hospitalDistrict = districtEl.value;
+                        const hospitalName = hospitalEl.value;
+                        const patientName = patientNameEl.value;
+                        const contactNumber = contactNumberEl.value;
+                        const appointmentDate = dateEl.value;
+                        const appointmentTime = timeEl.value;
+                        const emergencyLocation = locationEl.value;
+                        const hospitalNotes = notesEl.value;
+
+                        // Basic validation
+                        if (!hospitalState || !hospitalDistrict || hospitalDistrict === 'Select District' || !hospitalName || hospitalName === 'Please select a district first' || !patientName || !contactNumber) {
+                             resultDiv.innerHTML = `<p class="text-red-400">Please fill in State, District, Hospital, Name, and Contact Number.</p>`;
+                             return;
+                        }
+                         if (service === 'Appointment Booking' && (!appointmentDate || !appointmentTime)) {
+                              resultDiv.innerHTML = `<p class="text-red-400">Please select a preferred date and time for the appointment.</p>`;
+                              return;
+                         }
+                         if (service === 'Ambulance Request' && !emergencyLocation) {
+                              resultDiv.innerHTML = `<p class="text-red-400">Please provide the current location for the ambulance request.</p>`;
+                              return;
+                         }
+
+                        userInput = `Service Request: ${service}. Location: ${hospitalDistrict}, ${hospitalState}. Hospital: ${hospitalName}. Patient Name: ${patientName}. Contact Number: ${contactNumber}.`;
+                         if (service === 'Appointment Booking') {
+                             userInput += ` Preferred Date: ${appointmentDate}. Preferred Time: ${appointmentTime}.`;
+                         }
+                         if (service === 'Ambulance Request') {
+                              userInput += ` Emergency Location: ${emergencyLocation}.`;
+                         }
+                        userInput += ` Notes/Symptoms: ${hospitalNotes || 'None'}`;
+
+                        systemPrompt = `You are an automated hospital booking assistant named Arogya. The user's preferred language is ${state.selectedLanguage}. Based on the user's request, generate a clear, professional confirmation message. State that their request has been successfully submitted to the specified hospital. Reiterate all the relevant details provided by the user (Service, Patient Name, Hospital, Contact Number, and specific details like date/time or location based on service type) in the confirmation. For ambulance requests, state that the hospital has been notified and will dispatch an ambulance to the provided location. For bed availability or general inquiries, state that the hospital will contact them shortly on their provided number. Do not use markdown.`;
+                        analysisType = 'text';
+                        break;
+                    }
+
+                    case 'digitaltwin': {
+                        const hrEl = getEl('twin-hr');
+                        const bpEl = getEl('twin-bp');
+                        const exerciseEl = getEl('twin-exercise');
+                        const sleepEl = getEl('twin-sleep');
+                        const scenarioEl = getEl('notes-input'); // Shared ID
+
+                        // Safety Check: Ensure elements exist
+                         if (!hrEl || !bpEl || !exerciseEl || !sleepEl || !scenarioEl) {
+                             console.error("One or more UI elements for 'digitaltwin' module are missing.");
+                             resultDiv.innerHTML = `<p class="text-red-400">A critical UI error occurred. Please refresh.</p>`;
+                             return;
+                         }
+                        const hr = hrEl.value;
+                        const bp = bpEl.value;
+                        const exercise = exerciseEl.value;
+                        const sleep = sleepEl.value;
+                        const scenario = scenarioEl.value;
+                        userInput = `Current Health Profile: Resting Heart Rate=${hr || 'N/A'}bpm, Blood Pressure=${bp || 'N/A'}, Weekly Exercise=${exercise || 'N/A'}hrs, Daily Sleep=${sleep || 'N/A'}hrs. Simulated Scenario: ${scenario}`;
+                        systemPrompt += `You are a health simulation AI. Based on the user's health profile, analyze the likely long-term (1-5 year) impact of the simulated lifestyle change described in the scenario. Discuss potential improvements or changes in health metrics (like heart rate, BP), reduction or increase in chronic disease risk (like diabetes, hypertension), and overall well-being. Provide a balanced, evidence-based forecast. Acknowledge any missing current data.`;
+                         analysisType = 'text';
+                        break;
+                    }
+
+                    case 'outbreak': {
+                        const stateEl = getEl('gov-state');
+                        const districtEl = getEl('gov-district');
+                        const symptomsEl = getEl('notes-input'); // Shared ID
+
+                        // Safety Check: Ensure elements exist
+                        if (!stateEl || !districtEl || !symptomsEl) {
+                             console.error("One or more UI elements for 'outbreak' module are missing.");
+                             resultDiv.innerHTML = `<p class="text-red-400">A critical UI error occurred. Please refresh.</p>`;
+                             return;
+                        }
+                        const outbreakState = stateEl.value;
+                        const outbreakDistrict = districtEl.value;
+                        const symptoms = symptomsEl.value;
+                         if (!outbreakState || !outbreakDistrict || outbreakDistrict === 'Select District') {
+                            resultDiv.innerHTML = `<p class="text-red-400">Please select your state and district.</p>`;
+                            return;
+                         }
+                        userInput = `Location for Analysis: ${outbreakDistrict}, ${outbreakState}. Key symptoms observed in the community: ${symptoms || 'None specified'}.`;
+                        systemPrompt += `You are an epidemiologist AI. Based on the location and reported symptoms, provide a risk assessment for a potential infectious disease outbreak. Consider seasonality, general population density awareness for India, and common symptom patterns. Suggest common potential pathogens (if symptoms are indicative) and recommend general public health and safety measures (e.g., hygiene, masking if respiratory, seeking medical advice). Provide a risk level (Low, Moderate, High, Very High) with justification. State limitations if symptoms are vague.`;
+                         analysisType = 'text';
+                        break;
+                    }
+
+                    case 'visionfit': {
+                        const areaEl = getEl('visionfit-area');
+                        const goalEl = getEl('visionfit-goal');
+                        const notesEl = getEl('notes-input'); // Shared ID
+
+                        // Safety Check: Ensure elements exist
+                         if (!areaEl || !goalEl || !notesEl) {
+                            console.error("One or more UI elements for 'visionfit' module are missing.");
+                            resultDiv.innerHTML = `<p class="text-red-400">A critical UI error occurred. Please refresh.</p>`;
+                            return;
+                         }
+                        const area = areaEl.value;
+                        const goal = goalEl.value;
+                        const notes = notesEl.value;
+                        userInput = `Area of Concern: ${area}, Primary Goal: ${goal}. Detailed description: ${notes}`;
+                        systemPrompt += `You are Vision-Fit, an AI-powered physiotherapist assistant. Based on the user's area of concern, goal, and detailed description, create a safe, *general* exercise and stretching plan suitable for preliminary guidance. Provide clear instructions for 2-3 suggested exercises/stretches, including reps/duration, sets, and frequency. Include important general warnings (e.g., 'stop if pain occurs', 'consult a professional'). Structure the response clearly. Crucially, state that this is NOT a substitute for professional physiotherapy assessment and diagnosis, especially for injuries or persistent pain.`;
+                        analysisType = 'text';
+                        break;
+                    }
+
+                    // --- Corrected Default Case ---
+                    default: {
+                        const textInputEl = getEl('text-input');
+                        // Safety Check: Check if textInputEl exists before using it
+                        if (textInputEl) {
+                            userInput = textInputEl.value;
+                        } else {
+                            // Fallback attempt for modules incorrectly hitting default
+                            const notesInputEl = getEl('notes-input');
+                            if (notesInputEl) {
+                                userInput = notesInputEl.value;
+                                console.warn(`Module '${module.id}' fell back to using 'notes-input' in default case.`);
+                            } else {
+                                 // If it's not supposed to have text input (like an upload module hitting default by error)
+                                 if (module.type === 'image_upload' || module.type === 'audio_upload') {
+                                     if(state.uploadedFiles.length > 0){
+                                        userInput = `Analyze the uploaded file for module ${module.id}.`; // Provide generic prompt
+                                        console.warn(`Module '${module.id}' using default case with file upload.`);
+                                     } else {
+                                         console.error(`No input field ('text-input' or 'notes-input') and no file uploaded for default module case: '${module.id}'`);
+                                         resultDiv.innerHTML = `<p class="text-red-400">Error: No input provided for this module.</p>`;
+                                         return;
+                                     }
+                                 } else {
+                                     // Truly missing input for a module that should have it
+                                     console.error(`No 'text-input' or 'notes-input' found for default module case: '${module.id}'`);
+                                     resultDiv.innerHTML = `<p class="text-red-400">Error: Input field not found for this module.</p>`;
+                                     return;
+                                 }
+                            }
+                        }
+                        // Set analysis type based on module config, defaulting to text
+                        if (module.type === 'image_upload') analysisType = 'image';
+                        else if (module.type === 'audio_upload') analysisType = 'audio';
+                        // Keep analysisType as 'text' for 'multi_input' or unknown types falling here
+                        else analysisType = 'text';
+                        break;
+                    }
+                     // --- End Corrected Default Case ---
+
+                } // End switch
+
+            } catch (err) {
+                 console.error(`Error processing input for module ${module.id}:`, err);
+                 resultDiv.innerHTML = `<p class="text-red-400">An unexpected error occurred while preparing your request. Please check console.</p>`;
+                 return; // Prevent API call on error
             }
+            // --- End of Corrected Section ---
 
-            if (!userInput && analysisType === 'text') {
-                resultDiv.innerHTML = `<p class="text-red-400">Please enter some text to analyze.</p>`;
-                return;
+
+            // Determine if input is actually required and present
+            const requiresTextInput = (analysisType === 'text' && module.type !== 'no_input');
+            const requiresFileUpload = (analysisType === 'image' || analysisType === 'audio');
+
+            // Final check before calling API
+            if (requiresTextInput && (!userInput || !userInput.trim())) {
+                 resultDiv.innerHTML = `<p class="text-red-400">Please provide the required text input for analysis.</p>`;
+                 return;
             }
+            // File upload presence is checked within specific cases ('healthtrend', 'ayur', 'derma', 'gait', 'sonus', 'vocaltone')
 
+            // Proceed to API call if checks pass
             callGeminiAPI(systemPrompt, userInput, resultDiv, analysisType);
         });
     }
 
-    // File upload logic
+    // --- File Upload Logic (Unchanged but needs the elements to exist) ---
     const dropZone = getEl(`drop-zone-${module.id}`);
     const fileInput = getEl(`file-input-${module.id}`);
     const previewContainer = getEl(`preview-${module.id}`);
 
     if (dropZone && fileInput && previewContainer) {
         const type = (module.id === 'sonus' || module.id === 'vocaltone') ? 'audio' : 'image';
-        
+
         dropZone.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', (e) => handleFileUpload(e.target.files, previewContainer, type));
 
@@ -1254,251 +1506,278 @@ const setupModuleEventListeners = (module) => {
             dropZone.classList.remove('bg-white/10');
             handleFileUpload(e.dataTransfer.files, previewContainer, type);
         });
+    } else if (module.type === 'image_upload' || module.type === 'audio_upload') {
+        // Log error if file handling elements are missing for modules that need them
+        console.error(`File upload elements (drop-zone, file-input, or preview) missing for module: ${module.id}`);
     }
-           // Specific logic for modules with State/District dropdowns
-            if (module.id === 'govschemes' || module.id === 'hospitalconnect' || module.id === 'outbreak' || module.id === 'arogyasos') {
-                const indianStates = {
-                    "Andaman and Nicobar Islands": ["Nicobar", "North and Middle Andaman", "South Andaman"],
-                    "Andhra Pradesh": ["Anantapur", "Chittoor", "East Godavari", "Guntur", "Krishna", "Kurnool", "Prakasam", "Sri Potti Sriramulu Nellore", "Srikakulam", "Visakhapatnam", "Vizianagaram", "West Godavari", "YSR Kadapa"],
-                    "Arunachal Pradesh": ["Tawang", "West Kameng", "East Kameng", "Papum Pare", "Kurung Kumey", "Kra Daadi", "Lower Subansiri", "Upper Subansiri", "West Siang", "East Siang", "Siang", "Upper Siang", "Lower Siang", "Lower Dibang Valley", "Dibang Valley", "Anjaw", "Lohit", "Namsai", "Changlang", "Tirap", "Longding"],
-                    "Assam": ["Baksa", "Barpeta", "Biswanath", "Bongaigaon", "Cachar", "Charaideo", "Chirang", "Darrang", "Dhemaji", "Dhubri", "Dibrugarh", "Dima Hasao", "Goalpara", "Golaghat", "Hailakandi", "Hojai", "Jorhat", "Kamrup", "Kamrup Metropolitan", "Karbi Anglong", "Karimganj", "Kokrajhar", "Lakhimpur", "Majuli", "Morigaon", "Nagaon", "Nalbari", "Sivasagar", "Sonitpur", "South Salmara-Mankachar", "Tinsukia", "Udalguri", "West Karbi Anglong"],
-                    "Bihar": ["Araria", "Arwal", "Aurangabad", "Banka", "Begusarai", "Bhagalpur", "Bhojpur", "Buxar", "Darbhanga", "East Champaran", "Gaya", "Gopalganj", "Jamui", "Jehanabad", "Kaimur", "Katihar", "Khagaria", "Kishanganj", "Lakhisarai", "Madhepura", "Madhubani", "Munger", "Muzaffarpur", "Nalanda", "Nawada", "Patna", "Purnia", "Rohtas", "Saharsa", "Samastipur", "Saran", "Sheikhpura", "Sheohar", "Sitamarhi", "Siwan", "Supaul", "Vaishali", "West Champaran"],
-                    "Chandigarh": ["Chandigarh"],
-                    "Chhattisgarh": ["Balod", "Baloda Bazar", "Balrampur", "Bastar", "Bemetara", "Bijapur", "Bilaspur", "Dantewada", "Dhamtari", "Durg", "Gariaband", "Janjgir-Champa", "Jashpur", "Kanker", "Kabirdham", "Kondagaon", "Korba", "Koriya", "Mahasamund", "Mungeli", "Narayanpur", "Raigarh", "Raipur", "Rajnandgaon", "Sukma", "Surajpur", "Surguja"],
-                    "Dadra and Nagar Haveli and Daman and Diu": ["Daman", "Diu", "Dadra and Nagar Haveli"],
-                    "Delhi": ["Central Delhi", "East Delhi", "New Delhi", "North Delhi", "North East Delhi", "North West Delhi", "Shahdara", "South Delhi", "South East Delhi", "South West Delhi", "West Delhi"],
-                    "Goa": ["North Goa", "South Goa"],
-                    "Gujarat": ["Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha", "Bharuch", "Bhavnagar", "Botad", "Chhota Udaipur", "Dahod", "Dang", "Devbhoomi Dwarka", "Gandhinagar", "Gir Somnath", "Jamnagar", "Junagadh", "Kheda", "Kutch", "Mahisagar", "Mehsana", "Morbi", "Narmada", "Navsari", "Panchmahal", "Patan", "Porbandar", "Rajkot", "Sabarkantha", "Surat", "Surendranagar", "Tapi", "Vadodara", "Valsad"],
-                    "Haryana": ["Ambala", "Bhiwani", "Charkhi Dadri", "Faridabad", "Fatehabad", "Gurugram", "Hisar", "Jhajjar", "Jind", "Kaithal", "Karnal", "Kurukshetra", "Mahendragarh", "Nuh", "Palwal", "Panchkula", "Panipat", "Rewari", "Rohtak", "Sirsa", "Sonipat", "Yamunanagar"],
-                    "Himachal Pradesh": ["Bilaspur", "Chamba", "Hamirpur", "Kangra", "Kinnaur", "Kullu", "Lahaul and Spiti", "Mandi", "Shimla", "Sirmaur", "Solan", "Una"],
-                    "Jammu and Kashmir": ["Anantnag", "Bandipora", "Baramulla", "Budgam", "Doda", "Ganderbal", "Jammu", "Kathua", "Kishtwar", "Kulgam", "Kupwara", "Poonch", "Pulwama", "Rajouri", "Ramban", "Reasi", "Samba", "Shopian", "Srinagar", "Udhampur"],
-                    "Jharkhand": ["Bokaro", "Chatra", "Deoghar", "Dhanbad", "Dumka", "East Singhbhum", "Garhwa", "Giridih", "Godda", "Gumla", "Hazaribagh", "Jamtara", "Khunti", "Koderma", "Latehar", "Lohardaga", "Pakur", "Palamu", "Ramgarh", "Ranchi", "Sahebganj", "Seraikela Kharsawan", "Simdega", "West Singhbhum"],
-                    "Karnataka": ["Bagalkot", "Ballari", "Belagavi", "Bengaluru Rural", "Bengaluru Urban", "Bidar", "Chamarajanagar", "Chikkaballapur", "Chikkamagaluru", "Chitradurga", "Dakshina Kannada", "Davanagere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur", "Ramanagara", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada", "Vijayapura", "Yadgir"],
-                    "Kerala": ["Alappuzha", "Ernakulam", "Idukki", "Kannur", "Kasaragod", "Kollam", "Kottayam", "Kozhikode", "Malappuram", "Palakkad", "Pathanamthitta", "Thiruvananthapuram", "Thrissur", "Wayanad"],
-                    "Ladakh": ["Kargil", "Leh"],
-                    "Lakshadweep": ["Lakshadweep"],
-                    "Madhya Pradesh": ["Agar Malwa", "Alirajpur", "Anuppur", "Ashoknagar", "Balaghat", "Barwani", "Betul", "Bhind", "Bhopal", "Burhanpur", "Chhatarpur", "Chhindwara", "Damoh", "Datia", "Dewas", "Dhar", "Dindori", "Guna", "Gwalior", "Harda", "Hoshangabad", "Indore", "Jabalpur", "Jhabua", "Katni", "Khandwa", "Khargone", "Mandla", "Mandsaur", "Morena", "Narsinghpur", "Neemuch", "Panna", "Raisen", "Rajgarh", "Ratlam", "Rewa", "Sagar", "Satna", "Sehore", "Seoni", "Shahdol", "Shajapur", "Sheopur", "Shivpuri", "Sidhi", "Singrauli", "Tikamgarh", "Ujjain", "Umaria", "Vidisha"],
-                    "Maharashtra": ["Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed", "Bhandara", "Buldhana", "Chandrapur", "Dhule", "Gadchiroli", "Gondia", "Hingoli", "Jalgaon", "Jalna", "Kolhapur", "Latur", "Mumbai City", "Mumbai Suburban", "Nagpur", "Nanded", "Nandurbar", "Nashik", "Osmanabad", "Palghar", "Parbhani", "Pune", "Raigad", "Ratnagiri", "Sangli", "Satara", "Sindhudurg", "Solapur", "Thane", "Wardha", "Washim", "Yavatmal"],
-                    "Manipur": ["Bishnupur", "Chandel", "Churachandpur", "Imphal East", "Imphal West", "Jiribam", "Kakching", "Kamjong", "Kangpokpi", "Noney", "Pherzawl", "Senapati", "Tamenglong", "Tengnoupal", "Thoubal", "Ukhrul"],
-                    "Meghalaya": ["East Garo Hills", "East Jaintia Hills", "East Khasi Hills", "North Garo Hills", "Ri Bhoi", "South Garo Hills", "South West Garo Hills", "South West Khasi Hills", "West Garo Hills", "West Jaintia Hills", "West Khasi Hills"],
-                    "Mizoram": ["Aizawl", "Champhai", "Hnahthial", "Khawzawl", "Kolasib", "Lawngtlai", "Lunglei", "Mamit", "Saiha", "Saitual", "Serchhip"],
-                    "Nagaland": ["Dimapur", "Kiphire", "Kohima", "Longleng", "Mokokchung", "Mon", "Peren", "Phek", "Tuensang", "Wokha", "Zunheboto"],
-                    "Odisha": ["Angul", "Balangir", "Balasore", "Bargarh", "Bhadrak", "Boudh", "Cuttack", "Deogarh", "Dhenkanal", "Gajapati", "Ganjam", "Jagatsinghpur", "Jajpur", "Jharsuguda", "Kalahandi", "Kandhamal", "Kendrapara", "Keonjhar", "Khordha", "Koraput", "Malkangiri", "Mayurbhanj", "Nabarangpur", "Nayagarh", "Nuapada", "Puri", "Rayagada", "Sambalpur", "Subarnapur", "Sundargarh"],
-                    "Puducherry": ["Karaikal", "Mahe", "Puducherry", "Yanam"],
-                    "Punjab": ["Amritsar", "Barnala", "Bathinda", "Faridkot", "Fatehgarh Sahib", "Fazilka", "Ferozepur", "Gurdaspur", "Hoshiarpur", "Jalandhar", "Kapurthala", "Ludhiana", "Mansa", "Moga", "Mohali", "Muktsar", "Pathankot", "Patiala", "Rupnagar", "Sangrur", "Shaheed Bhagat Singh Nagar", "Tarn Taran"],
-                    "Rajasthan": ["Ajmer", "Alwar", "Banswara", "Baran", "Barmer", "Bharatpur", "Bhilwara", "Bikaner", "Bundi", "Chittorgarh", "Churu", "Dausa", "Dholpur", "Dungarpur", "Hanumangarh", "Jaipur", "Jaisalmer", "Jalore", "Jhalawar", "Jhunjhunu", "Jodhpur", "Karauli", "Kota", "Nagaur", "Pali", "Pratapgarh", "Rajsamand", "Sawai Madhopur", "Sikar", "Sirohi", "Sri Ganganagar", "Tonk", "Udaipur"],
-                    "Sikkim": ["East Sikkim", "North Sikkim", "South Sikkim", "West Sikkim"],
-                    "Tamil Nadu": ["Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri", "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", "Kanyakumari", "Karur", "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", "Namakkal", "Nilgiris", "Perambalur", "Pudukkottai", "Ramanathapuram", "Ranipet", "Salem", "Sivaganga", "Tenkasi", "Thanjavur", "Theni", "Thoothukudi", "Tiruchirappalli", "Tirunelveli", "Tirupathur", "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Tiruvarur", "Vellore", "Viluppuram", "Virudhunagar"],
-                    "Telangana": ["Adilabad", "Bhadradri Kothagudem", "Hyderabad", "Jagtial", "Jangaon", "Jayashankar Bhupalpally", "Jogulamba Gadwal", "Kamareddy", "Karimnagar", "Khammam", "Komaram Bheem", "Mahabubabad", "Mahabubnagar", "Mancherial", "Medak", "Medchal-Malkajgiri", "Mulugu", "Nagarkurnool", "Nalgonda", "Narayanpet", "Nirmal", "Nizamabad", "Peddapalli", "Rajanna Sircilla", "Rangareddy", "Sangareddy", "Siddipet", "Suryapet", "Vikarabad", "Wanaparthy", "Warangal Rural", "Warangal Urban", "Yadadri Bhuvanagiri"],
-                    "Tripura": ["Dhalai", "Gomati", "Khowai", "North Tripura", "Sepahijala", "South Tripura", "Unakoti", "West Tripura"],
-                    "Uttar Pradesh": ["Agra", "Aligarh", "Prayagraj", "Ambedkar Nagar", "Amethi", "Amroha", "Auraiya", "Azamgarh", "Baghpat", "Bahraich", "Ballia", "Balrampur", "Banda", "Barabanki", "Bareilly", "Basti", "Bhadohi", "Bijnor", "Badaun", "Bulandshahr", "Chandauli", "Chitrakoot", "Deoria", "Etah", "Etawah", "Ayodhya", "Farrukhabad", "Fatehpur", "Firozabad", "Gautam Buddha Nagar", "Ghaziabad", "Ghazipur", "Gonda", "Gorakhpur", "Hamirpur", "Hapur", "Hardoi", "Hathras", "Jalaun", "Jaunpur", "Jhansi", "Kannauj", "Kanpur Dehat", "Kanpur Nagar", "Kasganj", "Kaushambi", "Kushinagar", "Lakhimpur Kheri", "Lalitpur", "Lucknow", "Maharajganj", "Mahoba", "Mainpuri", "Mathura", "Mau", "Meerut", "Mirzapur", "Moradabad", "Muzaffarnagar", "Pilibhit", "Pratapgarh", "Rae Bareli", "Rampur", "Saharanpur", "Sambhal", "Sant Kabir Nagar", "Shahjahanpur", "Shamli", "Shravasti", "Siddharthnagar", "Sitapur", "Sonbhadra", "Sultanpur", "Unnao", "Varanasi"],
-                    "Uttarakhand": ["Almora", "Bageshwar", "Chamoli", "Champawat", "Dehradun", "Haridwar", "Nainital", "Pauri Garhwal", "Pithoragarh", "Rudraprayag", "Tehri Garhwal", "Udham Singh Nagar", "Uttarkashi"],
-                    "West Bengal": ["Alipurduar", "Bankura", "Birbhum", "Cooch Behar", "Dakshin Dinajpur", "Darjeeling", "Hooghly", "Howrah", "Jalpaiguri", "Jhargram", "Kalimpong", "Kolkata", "Malda", "Murshidabad", "Nadia", "North 24 Parganas", "Paschim Bardhaman", "Paschim Medinipur", "Purba Bardhaman", "Purba Medinipur", "Purulia", "South 24 Parganas", "Uttar Dinajpur"]
-                };
 
-                const stateSelect = getEl('gov-state');
-                const districtSelect = getEl('gov-district');
-                
-                Object.keys(indianStates).forEach(state => {
+    // --- State/District Dropdown Logic (Added safety checks) ---
+    if (['govschemes', 'hospitalconnect', 'outbreak', 'arogyasos'].includes(module.id)) {
+        const indianStates = { /* ... Keep your full indianStates object here ... */
+            "Andaman and Nicobar Islands": ["Nicobar", "North and Middle Andaman", "South Andaman"],
+            "Andhra Pradesh": ["Anantapur", "Chittoor", "East Godavari", "Guntur", "Krishna", "Kurnool", "Prakasam", "Sri Potti Sriramulu Nellore", "Srikakulam", "Visakhapatnam", "Vizianagaram", "West Godavari", "YSR Kadapa"],
+            "Arunachal Pradesh": ["Tawang", "West Kameng", "East Kameng", "Papum Pare", "Kurung Kumey", "Kra Daadi", "Lower Subansiri", "Upper Subansiri", "West Siang", "East Siang", "Siang", "Upper Siang", "Lower Siang", "Lower Dibang Valley", "Dibang Valley", "Anjaw", "Lohit", "Namsai", "Changlang", "Tirap", "Longding"],
+            "Assam": ["Baksa", "Barpeta", "Biswanath", "Bongaigaon", "Cachar", "Charaideo", "Chirang", "Darrang", "Dhemaji", "Dhubri", "Dibrugarh", "Dima Hasao", "Goalpara", "Golaghat", "Hailakandi", "Hojai", "Jorhat", "Kamrup", "Kamrup Metropolitan", "Karbi Anglong", "Karimganj", "Kokrajhar", "Lakhimpur", "Majuli", "Morigaon", "Nagaon", "Nalbari", "Sivasagar", "Sonitpur", "South Salmara-Mankachar", "Tinsukia", "Udalguri", "West Karbi Anglong"],
+            "Bihar": ["Araria", "Arwal", "Aurangabad", "Banka", "Begusarai", "Bhagalpur", "Bhojpur", "Buxar", "Darbhanga", "East Champaran", "Gaya", "Gopalganj", "Jamui", "Jehanabad", "Kaimur", "Katihar", "Khagaria", "Kishanganj", "Lakhisarai", "Madhepura", "Madhubani", "Munger", "Muzaffarpur", "Nalanda", "Nawada", "Patna", "Purnia", "Rohtas", "Saharsa", "Samastipur", "Saran", "Sheikhpura", "Sheohar", "Sitamarhi", "Siwan", "Supaul", "Vaishali", "West Champaran"],
+            "Chandigarh": ["Chandigarh"],
+            "Chhattisgarh": ["Balod", "Baloda Bazar", "Balrampur", "Bastar", "Bemetara", "Bijapur", "Bilaspur", "Dantewada", "Dhamtari", "Durg", "Gariaband", "Janjgir-Champa", "Jashpur", "Kanker", "Kabirdham", "Kondagaon", "Korba", "Koriya", "Mahasamund", "Mungeli", "Narayanpur", "Raigarh", "Raipur", "Rajnandgaon", "Sukma", "Surajpur", "Surguja"],
+            "Dadra and Nagar Haveli and Daman and Diu": ["Daman", "Diu", "Dadra and Nagar Haveli"],
+            "Delhi": ["Central Delhi", "East Delhi", "New Delhi", "North Delhi", "North East Delhi", "North West Delhi", "Shahdara", "South Delhi", "South East Delhi", "South West Delhi", "West Delhi"],
+            "Goa": ["North Goa", "South Goa"],
+            "Gujarat": ["Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha", "Bharuch", "Bhavnagar", "Botad", "Chhota Udaipur", "Dahod", "Dang", "Devbhoomi Dwarka", "Gandhinagar", "Gir Somnath", "Jamnagar", "Junagadh", "Kheda", "Kutch", "Mahisagar", "Mehsana", "Morbi", "Narmada", "Navsari", "Panchmahal", "Patan", "Porbandar", "Rajkot", "Sabarkantha", "Surat", "Surendranagar", "Tapi", "Vadodara", "Valsad"],
+            "Haryana": ["Ambala", "Bhiwani", "Charkhi Dadri", "Faridabad", "Fatehabad", "Gurugram", "Hisar", "Jhajjar", "Jind", "Kaithal", "Karnal", "Kurukshetra", "Mahendragarh", "Nuh", "Palwal", "Panchkula", "Panipat", "Rewari", "Rohtak", "Sirsa", "Sonipat", "Yamunanagar"],
+            "Himachal Pradesh": ["Bilaspur", "Chamba", "Hamirpur", "Kangra", "Kinnaur", "Kullu", "Lahaul and Spiti", "Mandi", "Shimla", "Sirmaur", "Solan", "Una"],
+            "Jammu and Kashmir": ["Anantnag", "Bandipora", "Baramulla", "Budgam", "Doda", "Ganderbal", "Jammu", "Kathua", "Kishtwar", "Kulgam", "Kupwara", "Poonch", "Pulwama", "Rajouri", "Ramban", "Reasi", "Samba", "Shopian", "Srinagar", "Udhampur"],
+            "Jharkhand": ["Bokaro", "Chatra", "Deoghar", "Dhanbad", "Dumka", "East Singhbhum", "Garhwa", "Giridih", "Godda", "Gumla", "Hazaribagh", "Jamtara", "Khunti", "Koderma", "Latehar", "Lohardaga", "Pakur", "Palamu", "Ramgarh", "Ranchi", "Sahebganj", "Seraikela Kharsawan", "Simdega", "West Singhbhum"],
+            "Karnataka": ["Bagalkot", "Ballari", "Belagavi", "Bengaluru Rural", "Bengaluru Urban", "Bidar", "Chamarajanagar", "Chikkaballapur", "Chikkamagaluru", "Chitradurga", "Dakshina Kannada", "Davanagere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur", "Ramanagara", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada", "Vijayapura", "Yadgir"],
+            "Kerala": ["Alappuzha", "Ernakulam", "Idukki", "Kannur", "Kasaragod", "Kollam", "Kottayam", "Kozhikode", "Malappuram", "Palakkad", "Pathanamthitta", "Thiruvananthapuram", "Thrissur", "Wayanad"],
+            "Ladakh": ["Kargil", "Leh"],
+            "Lakshadweep": ["Lakshadweep"],
+            "Madhya Pradesh": ["Agar Malwa", "Alirajpur", "Anuppur", "Ashoknagar", "Balaghat", "Barwani", "Betul", "Bhind", "Bhopal", "Burhanpur", "Chhatarpur", "Chhindwara", "Damoh", "Datia", "Dewas", "Dhar", "Dindori", "Guna", "Gwalior", "Harda", "Hoshangabad", "Indore", "Jabalpur", "Jhabua", "Katni", "Khandwa", "Khargone", "Mandla", "Mandsaur", "Morena", "Narsinghpur", "Neemuch", "Panna", "Raisen", "Rajgarh", "Ratlam", "Rewa", "Sagar", "Satna", "Sehore", "Seoni", "Shahdol", "Shajapur", "Sheopur", "Shivpuri", "Sidhi", "Singrauli", "Tikamgarh", "Ujjain", "Umaria", "Vidisha"],
+            "Maharashtra": ["Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed", "Bhandara", "Buldhana", "Chandrapur", "Dhule", "Gadchiroli", "Gondia", "Hingoli", "Jalgaon", "Jalna", "Kolhapur", "Latur", "Mumbai City", "Mumbai Suburban", "Nagpur", "Nanded", "Nandurbar", "Nashik", "Osmanabad", "Palghar", "Parbhani", "Pune", "Raigad", "Ratnagiri", "Sangli", "Satara", "Sindhudurg", "Solapur", "Thane", "Wardha", "Washim", "Yavatmal"],
+            "Manipur": ["Bishnupur", "Chandel", "Churachandpur", "Imphal East", "Imphal West", "Jiribam", "Kakching", "Kamjong", "Kangpokpi", "Noney", "Pherzawl", "Senapati", "Tamenglong", "Tengnoupal", "Thoubal", "Ukhrul"],
+            "Meghalaya": ["East Garo Hills", "East Jaintia Hills", "East Khasi Hills", "North Garo Hills", "Ri Bhoi", "South Garo Hills", "South West Garo Hills", "South West Khasi Hills", "West Garo Hills", "West Jaintia Hills", "West Khasi Hills"],
+            "Mizoram": ["Aizawl", "Champhai", "Hnahthial", "Khawzawl", "Kolasib", "Lawngtlai", "Lunglei", "Mamit", "Saiha", "Saitual", "Serchhip"],
+            "Nagaland": ["Dimapur", "Kiphire", "Kohima", "Longleng", "Mokokchung", "Mon", "Peren", "Phek", "Tuensang", "Wokha", "Zunheboto"],
+            "Odisha": ["Angul", "Balangir", "Balasore", "Bargarh", "Bhadrak", "Boudh", "Cuttack", "Deogarh", "Dhenkanal", "Gajapati", "Ganjam", "Jagatsinghpur", "Jajpur", "Jharsuguda", "Kalahandi", "Kandhamal", "Kendrapara", "Keonjhar", "Khordha", "Koraput", "Malkangiri", "Mayurbhanj", "Nabarangpur", "Nayagarh", "Nuapada", "Puri", "Rayagada", "Sambalpur", "Subarnapur", "Sundargarh"],
+            "Puducherry": ["Karaikal", "Mahe", "Puducherry", "Yanam"],
+            "Punjab": ["Amritsar", "Barnala", "Bathinda", "Faridkot", "Fatehgarh Sahib", "Fazilka", "Ferozepur", "Gurdaspur", "Hoshiarpur", "Jalandhar", "Kapurthala", "Ludhiana", "Mansa", "Moga", "Mohali", "Muktsar", "Pathankot", "Patiala", "Rupnagar", "Sangrur", "Shaheed Bhagat Singh Nagar", "Tarn Taran"],
+            "Rajasthan": ["Ajmer", "Alwar", "Banswara", "Baran", "Barmer", "Bharatpur", "Bhilwara", "Bikaner", "Bundi", "Chittorgarh", "Churu", "Dausa", "Dholpur", "Dungarpur", "Hanumangarh", "Jaipur", "Jaisalmer", "Jalore", "Jhalawar", "Jhunjhunu", "Jodhpur", "Karauli", "Kota", "Nagaur", "Pali", "Pratapgarh", "Rajsamand", "Sawai Madhopur", "Sikar", "Sirohi", "Sri Ganganagar", "Tonk", "Udaipur"],
+            "Sikkim": ["East Sikkim", "North Sikkim", "South Sikkim", "West Sikkim"],
+            "Tamil Nadu": ["Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri", "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", "Kanyakumari", "Karur", "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", "Namakkal", "Nilgiris", "Perambalur", "Pudukkottai", "Ramanathapuram", "Ranipet", "Salem", "Sivaganga", "Tenkasi", "Thanjavur", "Theni", "Thoothukudi", "Tiruchirappalli", "Tirunelveli", "Tirupathur", "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Tiruvarur", "Vellore", "Viluppuram", "Virudhunagar"],
+            "Telangana": ["Adilabad", "Bhadradri Kothagudem", "Hyderabad", "Jagtial", "Jangaon", "Jayashankar Bhupalpally", "Jogulamba Gadwal", "Kamareddy", "Karimnagar", "Khammam", "Komaram Bheem", "Mahabubabad", "Mahabubnagar", "Mancherial", "Medak", "Medchal-Malkajgiri", "Mulugu", "Nagarkurnool", "Nalgonda", "Narayanpet", "Nirmal", "Nizamabad", "Peddapalli", "Rajanna Sircilla", "Rangareddy", "Sangareddy", "Siddipet", "Suryapet", "Vikarabad", "Wanaparthy", "Warangal Rural", "Warangal Urban", "Yadadri Bhuvanagiri"],
+            "Tripura": ["Dhalai", "Gomati", "Khowai", "North Tripura", "Sepahijala", "South Tripura", "Unakoti", "West Tripura"],
+            "Uttar Pradesh": ["Agra", "Aligarh", "Prayagraj", "Ambedkar Nagar", "Amethi", "Amroha", "Auraiya", "Azamgarh", "Baghpat", "Bahraich", "Ballia", "Balrampur", "Banda", "Barabanki", "Bareilly", "Basti", "Bhadohi", "Bijnor", "Badaun", "Bulandshahr", "Chandauli", "Chitrakoot", "Deoria", "Etah", "Etawah", "Ayodhya", "Farrukhabad", "Fatehpur", "Firozabad", "Gautam Buddha Nagar", "Ghaziabad", "Ghazipur", "Gonda", "Gorakhpur", "Hamirpur", "Hapur", "Hardoi", "Hathras", "Jalaun", "Jaunpur", "Jhansi", "Kannauj", "Kanpur Dehat", "Kanpur Nagar", "Kasganj", "Kaushambi", "Kushinagar", "Lakhimpur Kheri", "Lalitpur", "Lucknow", "Maharajganj", "Mahoba", "Mainpuri", "Mathura", "Mau", "Meerut", "Mirzapur", "Moradabad", "Muzaffarnagar", "Pilibhit", "Pratapgarh", "Rae Bareli", "Rampur", "Saharanpur", "Sambhal", "Sant Kabir Nagar", "Shahjahanpur", "Shamli", "Shravasti", "Siddharthnagar", "Sitapur", "Sonbhadra", "Sultanpur", "Unnao", "Varanasi"],
+            "Uttarakhand": ["Almora", "Bageshwar", "Chamoli", "Champawat", "Dehradun", "Haridwar", "Nainital", "Pauri Garhwal", "Pithoragarh", "Rudraprayag", "Tehri Garhwal", "Udham Singh Nagar", "Uttarkashi"],
+            "West Bengal": ["Alipurduar", "Bankura", "Birbhum", "Cooch Behar", "Dakshin Dinajpur", "Darjeeling", "Hooghly", "Howrah", "Jalpaiguri", "Jhargram", "Kalimpong", "Kolkata", "Malda", "Murshidabad", "Nadia", "North 24 Parganas", "Paschim Bardhaman", "Paschim Medinipur", "Purba Bardhaman", "Purba Medinipur", "Purulia", "South 24 Parganas", "Uttar Dinajpur"]
+         };
+
+        const stateSelect = getEl('gov-state');
+        const districtSelect = getEl('gov-district');
+
+        // Safety Check: Ensure dropdowns exist before adding listeners/options
+         if(stateSelect && districtSelect) {
+             // Clear existing options before repopulating (important if module is re-rendered)
+             stateSelect.innerHTML = '<option value="">Select State</option>'; // Add a default empty value option
+             districtSelect.innerHTML = '<option>Select District</option>';
+
+             Object.keys(indianStates).sort().forEach(stateName => { // Sort states alphabetically
+                 const option = document.createElement('option');
+                 option.value = stateName;
+                 option.textContent = stateName;
+                 stateSelect.appendChild(option);
+             });
+
+             const populateDistricts = () => {
+                 const selectedState = stateSelect.value;
+                 districtSelect.innerHTML = '<option>Select District</option>'; // Reset districts
+                 districtSelect.disabled = true; // Disable until state is selected properly
+                 if (selectedState && indianStates[selectedState]) { // Check selectedState is not empty
+                     indianStates[selectedState].sort().forEach(districtName => { // Sort districts
+                         const option = document.createElement('option');
+                         option.value = districtName;
+                         option.textContent = districtName;
+                         districtSelect.appendChild(option);
+                     });
+                     districtSelect.disabled = false; // Enable district selection
+                 }
+             };
+
+             stateSelect.addEventListener('change', populateDistricts);
+             // Don't call populateDistricts() initially, wait for user selection.
+             districtSelect.disabled = true; // Ensure district is disabled initially
+         } else {
+             console.error("State or District select element not found for module:", module.id);
+         }
+    }
+
+    // --- Hospital Connect Logic (Added safety checks) ---
+    if (module.id === 'hospitalconnect') {
+        const serviceSelect = getEl('hospital-service');
+        const appointmentDateGroup = getEl('appointment-date-time-group');
+        const emergencyLocationGroup = getEl('emergency-location-group');
+        const districtSelect = getEl('gov-district'); // Relies on the element created above
+        const hospitalSelect = getEl('hospital-select');
+
+        // Safety Check: Ensure elements exist
+        if(serviceSelect && appointmentDateGroup && emergencyLocationGroup && districtSelect && hospitalSelect) {
+            const populateHospitals = (district) => {
+                hospitalSelect.innerHTML = ''; // Clear previous options
+                if (!district || district === 'Select District') {
+                     hospitalSelect.disabled = true;
+                     hospitalSelect.innerHTML = '<option value="">Please select a district first</option>'; // Add empty value
+                     return;
+                }
+                hospitalSelect.disabled = false;
+                const mockHospitals = [ /* ... Keep your mock hospital generation ... */
+                    `District Government Hospital, ${district}`, `Apollo Hospital, ${district}`,
+                    `Max Healthcare, ${district}`, `Fortis Hospital, ${district}`,
+                    `Manipal Hospital, ${district}`, `Care Hospital, ${district}`,
+                    `Community Health Centre, ${district}`, `ESI Hospital, ${district}`
+                ].sort(); // Sort hospital names
+                 hospitalSelect.innerHTML = '<option value="">Select Hospital</option>'; // Add default select option
+                mockHospitals.forEach(hospitalName => {
                     const option = document.createElement('option');
-                    option.value = state;
-                    option.textContent = state;
-                    stateSelect.appendChild(option);
+                    option.value = hospitalName;
+                    option.textContent = hospitalName;
+                    hospitalSelect.appendChild(option);
                 });
+            };
 
-                const populateDistricts = () => {
-                    const selectedState = stateSelect.value;
-                    districtSelect.innerHTML = '<option>Select District</option>';
-                    if (indianStates[selectedState]) {
-                        indianStates[selectedState].forEach(district => {
-                            const option = document.createElement('option');
-                            option.value = district;
-                            option.textContent = district;
-                            districtSelect.appendChild(option);
-                        });
-                    }
-                };
+            // Ensure listener is added only if districtSelect exists
+            districtSelect.addEventListener('change', () => populateHospitals(districtSelect.value));
+            hospitalSelect.disabled = true; // Ensure disabled initially
 
-                stateSelect.addEventListener('change', populateDistricts);
-                populateDistricts();
-            }
-            
-            // Logic for Hospital Connect module
-            if (module.id === 'hospitalconnect') {
-                const serviceSelect = getEl('hospital-service');
-                const appointmentDateGroup = getEl('appointment-date-time-group');
-                const emergencyLocationGroup = getEl('emergency-location-group');
-                const districtSelect = getEl('gov-district');
-                const hospitalSelect = getEl('hospital-select');
+            const toggleVisibility = () => {
+                const selectedService = serviceSelect.value;
+                appointmentDateGroup.classList.toggle('hidden', selectedService !== 'Appointment Booking');
+                emergencyLocationGroup.classList.toggle('hidden', selectedService !== 'Ambulance Request');
+            };
+            serviceSelect.addEventListener('change', toggleVisibility);
+            toggleVisibility(); // Initial call
+        } else {
+            console.error("One or more UI elements for 'hospitalconnect' specific logic are missing.");
+        }
+    }
 
-                const populateHospitals = (district) => {
-                    hospitalSelect.innerHTML = ''; // Clear previous options
-                    
-                    if (!district || district === 'Select District') {
-                         hospitalSelect.disabled = true;
-                         hospitalSelect.innerHTML = '<option>Please select a district first</option>';
-                         return;
-                    }
+    // --- AI-Scribe Mic Logic (Added safety checks) ---
+    if (module.id === 'aiscribe' && recognition) {
+        const scribeMicButton = getEl('scribe-mic-button');
+        const scribeMicLabel = getEl('scribe-mic-label');
+        const textInput = getEl('text-input'); // Assumes aiscribe uses 'text-input'
 
-                    hospitalSelect.disabled = false;
-                    // Mock hospital data for a more realistic feel
-                    const mockHospitals = [
-                        `District Government Hospital, ${district}`, `Apollo Hospital, ${district}`,
-                        `Max Healthcare, ${district}`, `Fortis Hospital, ${district}`,
-                        `Manipal Hospital, ${district}`, `Care Hospital, ${district}`,
-                        `Community Health Centre, ${district}`, `ESI Hospital, ${district}`
-                    ];
-
-                    mockHospitals.forEach(hospitalName => {
-                        const option = document.createElement('option');
-                        option.value = hospitalName;
-                        option.textContent = hospitalName;
-                        hospitalSelect.appendChild(option);
-                    });
-                };
-                
-                districtSelect.addEventListener('change', () => populateHospitals(districtSelect.value));
-
-
-                const toggleVisibility = () => {
-                    if (serviceSelect.value === 'Appointment Booking') {
-                        appointmentDateGroup.classList.remove('hidden');
-                        emergencyLocationGroup.classList.add('hidden');
-                    } else if (serviceSelect.value === 'Ambulance Request') {
-                        appointmentDateGroup.classList.add('hidden');
-                        emergencyLocationGroup.classList.remove('hidden');
-                    } else {
-                        appointmentDateGroup.classList.add('hidden');
-                        emergencyLocationGroup.classList.add('hidden');
-                    }
-                };
-
-                serviceSelect.addEventListener('change', toggleVisibility);
-                toggleVisibility(); // Initial call to set visibility based on default value
-            }
-            
-            // AI-Scribe mic logic
-            if (module.id === 'aiscribe' && recognition) {
-                const scribeMicButton = getEl('scribe-mic-button');
-                const scribeMicLabel = getEl('scribe-mic-label');
-                const textInput = getEl('text-input');
-
-                scribeMicButton.addEventListener('click', () => {
-                     if (state.isRecording) {
-                        recognition.stop();
-                    } else {
+        // Safety Check: Ensure elements exist
+        if(scribeMicButton && scribeMicLabel && textInput) {
+            scribeMicButton.addEventListener('click', () => {
+                 if (state.isRecording) {
+                    recognition.stop(); // Will trigger onend
+                } else {
+                    try {
                         recognition.lang = state.selectedLanguage;
-                        recognition.start();
+                        recognition.start(); // Will trigger onstart
+                    } catch (recogError) {
+                         console.error("Error starting speech recognition:", recogError);
+                         // Optionally display an error to the user
+                         state.isRecording = false; // Ensure state is correct
+                         scribeMicButton.classList.remove('recording');
+                         scribeMicLabel.textContent = 'Start Scribing';
                     }
-                });
-                
-                const originalOnStart = recognition.onstart;
-                const originalOnEnd = recognition.onend;
-                const originalOnError = recognition.onerror;
-                const originalOnResult = recognition.onresult;
+                }
+            });
 
-                recognition.onstart = () => {
-                    if(state.activeModule === 'aiscribe') {
-                        scribeMicButton.classList.add('recording');
-                        scribeMicLabel.textContent = 'Listening...';
-                        state.isRecording = true;
-                    } else {
-                        if (originalOnStart) originalOnStart();
-                    }
-                };
-                 recognition.onend = () => {
-                     if(state.activeModule === 'aiscribe') {
-                        scribeMicButton.classList.remove('recording');
-                        scribeMicLabel.textContent = 'Start Scribing';
-                        state.isRecording = false;
-                     } else {
-                        if (originalOnEnd) originalOnEnd();
+            // Keep original handlers safe if recognition object is reused elsewhere
+             const originalOnStart = recognition.onstart;
+             const originalOnEnd = recognition.onend;
+             const originalOnError = recognition.onerror;
+             const originalOnResult = recognition.onresult;
+
+            recognition.onstart = () => {
+                 console.log("Recognition started for module:", state.activeModule);
+                 if(state.activeModule === 'aiscribe') {
+                     scribeMicButton.classList.add('recording');
+                     scribeMicLabel.textContent = 'Listening...';
+                     state.isRecording = true;
+                 } else if (originalOnStart) {
+                      originalOnStart.call(recognition); // Call original if exists and not aiscribe
+                 }
+            };
+            recognition.onend = () => {
+                console.log("Recognition ended for module:", state.activeModule);
+                 if(state.activeModule === 'aiscribe') {
+                    scribeMicButton.classList.remove('recording');
+                    scribeMicLabel.textContent = 'Start Scribing';
+                    state.isRecording = false;
+                 } else if (originalOnEnd) {
+                     originalOnEnd.call(recognition); // Call original if exists and not aiscribe
+                 }
+            };
+             recognition.onerror = (e) => {
+                 console.error('Speech recognition error:', e.error, "for module:", state.activeModule);
+                 if(state.activeModule === 'aiscribe') {
+                    scribeMicButton.classList.remove('recording');
+                    scribeMicLabel.textContent = 'Start Scribing';
+                    state.isRecording = false;
+                     // Display error? e.g., resultDiv.innerHTML = `<p class="text-red-400">Mic error: ${e.error}</p>`;
+                 } else if (originalOnError) {
+                    originalOnError.call(recognition, e); // Call original if exists and not aiscribe
+                 }
+             };
+            recognition.onresult = (event) => {
+                console.log("Recognition result for module:", state.activeModule);
+                 if(state.activeModule === 'aiscribe') {
+                     let transcript = '';
+                     for (let i = event.resultIndex; i < event.results.length; ++i) {
+                         if (event.results[i].isFinal) {
+                            transcript += event.results[i][0].transcript;
+                         }
                      }
-                };
-                 recognition.onerror = (e) => {
-                     if(state.activeModule === 'aiscribe') {
-                        console.error('Scribe recognition error:', e.error);
-                        scribeMicButton.classList.remove('recording');
-                        scribeMicLabel.textContent = 'Start Scribing';
-                        state.isRecording = false;
-                     } else {
-                        if(originalOnError) originalOnError(e);
+                     if (transcript) {
+                        textInput.value = transcript; // Update the text area
+                        // Maybe don't auto-submit? Let user review first.
+                        // const submitButton = getEl('submit-aiscribe');
+                        // if (submitButton) submitButton.click();
                      }
-                 };
-                recognition.onresult = (event) => {
-                    if(state.activeModule === 'aiscribe') {
-                        const transcript = event.results[0][0].transcript;
-                        textInput.value = transcript;
-                        // Automatically call API to summarize after transcription
-                        const submitButton = getEl('submit-aiscribe');
-                        if (submitButton) submitButton.click();
+                 } else if (originalOnResult) {
+                     originalOnResult.call(recognition, event); // Call original if exists and not aiscribe
+                 }
+            };
+        } else {
+            console.error("One or more UI elements for 'aiscribe' logic are missing.");
+        }
+    }
+
+    // --- Starter Button Logic (Added safety checks) ---
+    const starterModules = ['genopredict', 'medsentry', 'cogni', 'mindwell'];
+    if (starterModules.includes(module.id)) {
+        const startersContainer = getEl(`${module.id}-starters`);
+        // Use the correct input ID based on the module
+        const inputId = (module.id === 'cogni' || module.id === 'mindwell') ? 'notes-input' : 'text-input';
+        const textInput = getEl(inputId);
+
+        // Safety Check: Ensure elements exist
+        if (startersContainer && textInput) {
+            startersContainer.addEventListener('click', (e) => {
+                // Ensure the click is directly on a button with the class
+                if (e.target.tagName === 'BUTTON' && e.target.classList.contains('starter-btn')) {
+                    const starterText = e.target.textContent;
+
+                    if (module.id === 'medsentry') {
+                         // Ensure textInput is the correct element for medsentry
+                         const medTextInput = getEl('text-input');
+                         const goalSelect = getEl('medsentry-goal');
+                         if (!medTextInput || !goalSelect) {
+                            console.error("Medsentry input/goal element missing for starter button.");
+                            return;
+                         }
+
+                         if (starterText.includes(' with ')) {
+                            const drugs = starterText.replace('Can I take ', '').replace('?', '').split(' with ');
+                            medTextInput.value = drugs.join('\n');
+                            goalSelect.value = 'Check for potential drug interactions';
+                        } else if (starterText.includes('side effects')) {
+                            const drug = starterText.replace('What are the side effects of ', '').replace('?', '');
+                            medTextInput.value = drug;
+                            goalSelect.value = 'List common side effects for a medication';
+                        } else if (starterText.includes('generic')) {
+                             const drug = starterText.replace('Is there a generic for ', '').replace('?', '');
+                            medTextInput.value = drug;
+                            goalSelect.value = 'Find potential cheaper alternatives (generics)';
+                        } else {
+                             medTextInput.value = starterText; // Default behavior if needed
+                        }
+                         medTextInput.focus(); // Focus the correct input
                     } else {
-                        if (originalOnResult) originalOnResult(event);
+                         // For other modules (genopredict, cogni, mindwell)
+                         textInput.value = starterText; // Use the determined input element
+                         textInput.focus();
                     }
-                };
-            }
-            if (module.id === 'genopredict') {
-                const startersContainer = getEl('genopredict-starters');
-                const textInput = getEl('text-input');
-                if (startersContainer && textInput) {
-                    startersContainer.addEventListener('click', (e) => {
-                        if (e.target.classList.contains('starter-btn')) {
-                            textInput.value = e.target.textContent;
-                            textInput.focus();
-                        }
-                    });
                 }
-            }
-            if (module.id === 'medsentry') {
-                const startersContainer = getEl('medsentry-starters');
-                const textInput = getEl('text-input');
-                if (startersContainer && textInput) {
-                    startersContainer.addEventListener('click', (e) => {
-                        if (e.target.classList.contains('starter-btn')) {
-                            const starterText = e.target.textContent;
-                             if (starterText.includes(' with ')) {
-                                const drugs = starterText.replace('Can I take ', '').replace('?', '').split(' with ');
-                                textInput.value = drugs.join('\n');
-                                getEl('medsentry-goal').value = 'Check for potential drug interactions';
-                            } else if (starterText.includes('side effects')) {
-                                const drug = starterText.replace('What are the side effects of ', '').replace('?', '');
-                                textInput.value = drug;
-                                getEl('medsentry-goal').value = 'List common side effects for a medication';
-                            } else if (starterText.includes('generic')) {
-                                 const drug = starterText.replace('Is there a generic for ', '').replace('?', '');
-                                textInput.value = drug;
-                                getEl('medsentry-goal').value = 'Find potential cheaper alternatives (generics)';
-                            }
-                            textInput.focus();
-                        }
-                    });
-                }
-            }
-            if (module.id === 'cogni') {
-                const startersContainer = getEl('cogni-starters');
-                const textInput = getEl('text-input');
-                if (startersContainer && textInput) {
-                    startersContainer.addEventListener('click', (e) => {
-                        if (e.target.classList.contains('starter-btn')) {
-                            textInput.value = e.target.textContent;
-                            textInput.focus();
-                        }
-                    });
-                }
-            }
-            if (module.id === 'mindwell') {
-                const startersContainer = getEl('mindwell-starters');
-                const textInput = getEl('text-input');
-                if (startersContainer && textInput) {
-                    startersContainer.addEventListener('click', (e) => {
-                        if (e.target.classList.contains('starter-btn')) {
-                            textInput.value = e.target.textContent;
-                            textInput.focus();
-                        }
-                    });
-                }
-            }
-        };
+            });
+        } else {
+             console.warn(`Starter container ('${module.id}-starters') or text input ('${inputId}') not found for module: ${module.id}`);
+        }
+    }
+}; // End of setupModuleEventListeners function
 
         const callGeminiAPI = async (systemPrompt, textInput, resultDisplay, type) => {
             resultDisplay.innerHTML = `<div class="loader"></div><p class="mt-4">${getTranslation('analysis_loading')}</p>`;
@@ -1944,5 +2223,6 @@ const setupModuleEventListeners = (module) => {
             }
 
         }
+
 
 
