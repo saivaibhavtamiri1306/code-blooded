@@ -1418,7 +1418,6 @@ const setupModuleEventListeners = (module) => {
                     default: {
                         console.log('DEBUG: Trying to get text-input in default case for module:', module.id); // <-- ADD THIS LINE
                         userInput = getEl('text-input').value; // Original line causing error
-                        break;
                         // Safety Check: Check if textInputEl exists before using it
                         if (textInputEl) {
                             userInput = textInputEl.value;
@@ -2225,6 +2224,7 @@ const setupModuleEventListeners = (module) => {
             }
 
         }
+
 
 
 
